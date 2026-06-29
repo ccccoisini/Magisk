@@ -26,39 +26,6 @@ jobs:
         with:
           is-asset-build: true
 
-      - name: Patch package name
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          old = "com.topjohnwu.magisk"
-          new = "com.games.lucky"
-
-          patches = {
-              "app/build-logic/src/main/java/Setup.kt": [
-                  (f'applicationId = "{old}"', f'applicationId = "{new}"'),
-              ],
-              "app/core/build.gradle.kts": [
-                  (f'buildConfigField("String", "APP_PACKAGE_NAME", "\\"{old}\\"")',
-                   f'buildConfigField("String", "APP_PACKAGE_NAME", "\\"{new}\\"")'),
-              ],
-              "app/stub/build.gradle.kts": [
-                  (f'applicationId = "{old}"', f'applicationId = "{new}"'),
-              ],
-          }
-
-          for file, reps in patches.items():
-              p = Path(file)
-              s = p.read_text()
-              for a, b in reps:
-                  if a not in s:
-                      raise SystemExit(f"Missing pattern in {file}: {a}")
-                  s = s.replace(a, b)
-              p.write_text(s)
-
-          print("Patched package name to com.games.lucky")
-          PY
-
       - name: Create arm64-v8a release config
         run: |
           cat > .github/armv8-release.prop <<'EOF'
