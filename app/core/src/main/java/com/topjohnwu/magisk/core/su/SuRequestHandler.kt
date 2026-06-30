@@ -60,6 +60,11 @@ class SuRequestHandler(
             return false
         }
 
+        if (!hasLivePolicy()) {
+            respond(SuPolicy.DENY, 0)
+            return false
+        }
+
         when (Config.suAutoResponse) {
             Config.Value.SU_AUTO_DENY -> {
                 respond(SuPolicy.DENY, 0)
@@ -111,6 +116,10 @@ class SuRequestHandler(
 
         val hasLivePolicy = policy.policy != SuPolicy.QUERY && policy.remain >= 0
         return !hasLivePolicy
+    }
+
+    private fun hasLivePolicy(): Boolean {
+        return policy.policy != SuPolicy.QUERY && policy.remain >= 0
     }
 
     suspend fun respond(action: Int, time: Long) {
