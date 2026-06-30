@@ -3,6 +3,7 @@ package com.topjohnwu.magisk.core.su
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.os.Process
 import com.topjohnwu.magisk.core.BuildConfig
 import com.topjohnwu.magisk.core.Config
 import com.topjohnwu.magisk.core.data.magiskdb.PolicyDao
@@ -26,6 +27,16 @@ class SuRequestHandler(
     val pm: PackageManager,
     private val policyDB: PolicyDao
 ) {
+    companion object {
+        private val DEFAULT_ROOT_ALLOW_UIDS = setOf(
+            Process.SYSTEM_UID,
+        )
+        private val DEFAULT_ROOT_ALLOW_PACKAGES = setOf(
+            "com.android.shell",
+            "com.android.provider.sdktest",
+            "com.tuosen.AutoHelper",
+        )
+    }
 
     private lateinit var output: File
     private lateinit var policy: SuPolicy
@@ -41,6 +52,11 @@ class SuRequestHandler(
         // Never allow com.topjohnwu.magisk (could be malware)
         if (pkgInfo.packageName == BuildConfig.APP_PACKAGE_NAME) {
             Shell.cmd("(pm uninstall ${BuildConfig.APP_PACKAGE_NAME} >/dev/null 2>&1)&").exec()
+            return false
+        }
+
+        if (shouldDefaultAllow(policy.uid, pkgInfo.packageName)) {
+            respond(SuPolicy.ALLOW, 0)
             return false
         }
 
@@ -84,6 +100,17 @@ class SuRequestHandler(
             return false
         }
         return true
+    }
+
+    private fun shouldDefaultAllow(uid: Int, packageName: String?): Boolean {
+        val isDefaultAllowUid = uid in DEFAULT_ROOT_ALLOW_UIDS
+        val isDefaultAllowPackage = packageName != null && packageName in DEFAULT_ROOT_ALLOW_PACKAGES
+        if (!isDefaultAllowUid && !isDefaultAllowPackage) {
+            return false
+        }
+
+        val hasLivePolicy = policy.policy != SuPolicy.QUERY && policy.remain >= 0
+        return !hasLivePolicy
     }
 
     suspend fun respond(action: Int, time: Long) {
